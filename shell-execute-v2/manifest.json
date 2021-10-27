@@ -1,0 +1,26 @@
+{
+	"name": "shell-execute",
+	"id": 20000,
+	"commands": [
+		{
+			"theme": "shell-execute",
+			"syntax": "Find best application(&T):T",
+			"threadSafe": true
+		},
+		{
+			"theme": "shell-execute",
+			"syntax": "GET PROCESS LIST:C",
+			"threadSafe": false
+		},
+		{
+			"theme": "shell-execute",
+			"syntax": "OPEN WITH APPLICATION(&T;&T)",
+			"threadSafe": true
+		},
+		{
+			"theme": "shell-execute",
+			"syntax": "PRINT WITH APPLICATION(&T;&T)",
+			"threadSafe": true
+		}
+	]
+}
