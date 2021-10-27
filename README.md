@@ -49,3 +49,5 @@ on windows, only 3rd party apps registered the "normal way" are reported.
 <img width="542" alt="スクリーンショット 2019-06-07 1 39 13" src="https://user-images.githubusercontent.com/1725068/59051497-fb730780-88c7-11e9-93c7-fecd7ea042fc.png">
 
 for instance, a delegate executable (Edge for ``.pdf``) are not reported.
+
+you can open or print the document even if "" (assocation execute command) is returned. you just don't know which app will be used.
