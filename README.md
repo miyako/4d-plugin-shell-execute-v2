@@ -8,7 +8,7 @@
 # 4d-plugin-shell-execute-v2
  Commands to open or print a document with the default application.
 
-```
+```4d
 application:=Find best application (document)
 OPEN WITH APPLICATION (document;application)
 PRINT WITH APPLICATION (document;application)
@@ -19,19 +19,21 @@ Parameter|Type|Description
 document|TEXT|Full path of document
 application|TEXT|Full path of application
 
+```4d
+$processes:=GET PROCESS LIST
 ```
-GET PROCESS LIST (names;paths;PIDs)
-```
+
+`$processes` is a collection of objects.
 
 Parameter|Type|Description
 ------------|------------|----
-names|ARRAY TEXT|Application names
-paths|ARRAY TEXT|Application paths
-PIDs|ARRAY LONGINT|Process numbers
+name|TEXT|Application name
+path|TEXT|Application path
+pid|LONGINT|Process number
 
 ### Examples
 
-```
+```4d
   //full path of best application to open given document
 $docPath:=Get 4D folder(Current resources folder)+"sample.pdf"
 $appPath:=Find best application ($docPath)
