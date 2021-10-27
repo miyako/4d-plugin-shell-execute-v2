@@ -50,4 +50,4 @@ on windows, only 3rd party apps registered the "normal way" are reported.
 
 for instance, a delegate executable (Edge for ``.pdf``) are not reported.
 
-you can open or print the document even if "" is returned and the assocation execute command is unknown. you just don't know which app will be used.
+you can open or print the document even if "" (assocation execute command) is returned. you just don't know which app will be used.
