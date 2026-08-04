@@ -21,6 +21,8 @@
 #include <tlhelp32.h>
 #include <shlwapi.h>
 #include <Shlguid.h>
+#include <shellapi.h>
+#pragma comment(lib, "shell32.lib")
 #endif
 
 #include "4DPlugin-JSON.h"
