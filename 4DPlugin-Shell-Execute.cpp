@@ -55,7 +55,7 @@ void Find_best_application(PA_PluginParameters params) {
     Param1.fromParamAtIndex(pParams, 1);
 
 #if VERSIONWIN
-#define BUFFERLENGTH 1024
+    const DWORD BUFFERLENGTH = 1024;
     LPCTSTR lpFile = (LPCTSTR)Param1.getUTF16StringPtr();
     DWORD bufferLength = BUFFERLENGTH;
     wchar_t lpResult[BUFFERLENGTH];
@@ -87,14 +87,14 @@ void Find_best_application(PA_PluginParameters params) {
     
 #else
     NSString *path = Param1.copyPath();
-    CFURLRef url;
+    CFURLRef url = NULL;
     if(LSGetApplicationForInfo(
         kLSUnknownType,
         kLSUnknownCreator,
         (CFStringRef)[path pathExtension],
         kLSRolesAll,
         NULL,
-        &url) != kLSApplicationNotFoundErr){
+        &url) == noErr){
             NSString *appPath = (NSString *)CFURLCopyFileSystemPath(url, kCFURLHFSPathStyle);
             CFRelease(url);
             returnValue.setUTF16String(appPath);
@@ -213,7 +213,7 @@ void OPEN_WITH_APPLICATION(PA_PluginParameters params) {
     Param2.fromParamAtIndex(pParams, 2);
 
 #if VERSIONWIN
-    LPCTSTR lpFile = (LPCTSTR)Param1.getUTF16StringPtr();
+    LPCTSTR lpFile = (LPCTSTR)Param2.getUTF16StringPtr();
     LPCTSTR lpParameters = (LPCTSTR)Param1.getUTF16StringPtr();
     ShellExecute(NULL, L"open", lpFile, lpParameters, NULL, SW_SHOWNORMAL);
 #else
@@ -243,7 +243,7 @@ void PRINT_WITH_APPLICATION(PA_PluginParameters params) {
     Param2.fromParamAtIndex(pParams, 2);
 
 #if VERSIONWIN
-    LPCTSTR lpFile = (LPCTSTR)Param1.getUTF16StringPtr();
+    LPCTSTR lpFile = (LPCTSTR)Param2.getUTF16StringPtr();
     LPCTSTR lpParameters = (LPCTSTR)Param1.getUTF16StringPtr();
     ShellExecute(NULL, L"print", lpFile, lpParameters, NULL, SW_SHOWNORMAL);
 #else
