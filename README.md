@@ -3,6 +3,8 @@
 [![license](https://img.shields.io/github/license/miyako/4d-plugin-shell-execute-v2)](LICENSE)
 ![downloads](https://img.shields.io/github/downloads/miyako/4d-plugin-shell-execute-v2/total)
 
+# 4d-plugin-shell-execute-v2
+
 The Shell Execute plugin drives OS-native file-association and process APIs from 4D: `AssocQueryString`/`LSGetApplicationForInfo` to find the app a file type resolves to, `Toolhelp32`/`NSWorkspace` to list running processes, and `ShellExecute`/`NSWorkspace` to open or print a document with a specific application. Results come back as plain `Text` or a `Collection` of `Object`.
 
 > **A note on this doc's sourcing:** it's written directly from the plugin's C++ source (`4DPlugin-Shell-Execute.cpp`/`.h`). No `manifest.json` and no sample `.4dm` test files were available, so exact command names, parameter names, and 4D-side return-type tokens below are **inferred from the plugin's internal function names and parameter-reading order**, not copied from a verified manifest. Treat the command names as "what they're almost certainly called" rather than a guaranteed-exact spelling — confirm against your own `manifest.json` if you have one.
