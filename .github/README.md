@@ -30,7 +30,9 @@ version token spans, preserving encodings, line endings, modes and other bytes.
 ## Bump safety
 
 The committed executable `.github/hooks/pre-push` is mandatory before editing
-and rechecked before pushing. Bump compares the selected event SHA to the exact
+and rechecked before pushing. Every check rejects symlinks and requires the
+guard's raw bytes and executable Git mode to match its HEAD blob, including
+after the final remote read. Bump compares the selected event SHA to the exact
 remote branch, creates one nonempty source-only direct child with explicit
 Actions bot identities and the co-author trailer, then checks Git's actual
 old-SHA advertisement. There is exactly one nonforce branch update; followed

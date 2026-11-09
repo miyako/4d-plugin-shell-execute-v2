@@ -1,5 +1,6 @@
 """Real bare-Git advertisement races and branch-only CLI regressions."""
 
+import json
 import os
 from pathlib import Path
 import shutil
@@ -208,6 +209,108 @@ class BumpTests(GitFixture):
                 patch.object(bump, "HOOK", hook):
             with self.assertRaisesRegex(ValueError, "executable"):
                 bump.bump_branch(self.sha, self.ref, "patch")
+        self.assert_unchanged()
+
+    def guarded_cli_with_git_log(self, tamper=None):
+        tools = self.root / "guard-tools"
+        tools.mkdir(exist_ok=True)
+        log = self.root / "guard-git.jsonl"
+        log.unlink(missing_ok=True)
+        counter = self.root / "guard-reads"
+        counter.unlink(missing_ok=True)
+        fake = self.root / "exit-zero-hook"
+        fake.write_bytes(b"#!/bin/sh\nexit 0\n")
+        fake.chmod(0o755)
+        wrapper = tools / "git"
+        wrapper.write_text(f"""#!{sys.executable}
+import json, os, pathlib, subprocess, sys
+args = sys.argv[1:]
+with open(os.environ["GUARD_GIT_LOG"], "a") as out:
+    out.write(json.dumps(args) + "\\n")
+result = subprocess.run([{shutil.which("git")!r}, *args], capture_output=True)
+if args[:3] == ["ls-remote", "--refs", "origin"] and result.returncode == 0:
+    counter = pathlib.Path(os.environ["GUARD_READS"])
+    reads = int(counter.read_text()) + 1 if counter.exists() else 1
+    counter.write_text(str(reads))
+    if reads == 2 and os.environ.get("GUARD_TAMPER"):
+        hook = pathlib.Path(".github/hooks/pre-push")
+        if os.environ["GUARD_TAMPER"] == "symlink":
+            hook.unlink()
+            hook.symlink_to(os.environ["GUARD_FAKE"])
+        else:
+            hook.write_bytes(b"#!/bin/sh\\nexit 0\\n")
+            hook.chmod(0o755)
+sys.stdout.buffer.write(result.stdout)
+sys.stderr.buffer.write(result.stderr)
+sys.exit(result.returncode)
+""")
+        wrapper.chmod(0o755)
+        upload_pack = shutil.which("git-upload-pack") or (
+            Path(subprocess.check_output(["git", "--exec-path"], text=True).strip())
+            / "git-upload-pack")
+        for name, executable in (("python3", sys.executable),
+                                 ("git-upload-pack", upload_pack)):
+            target = tools / name
+            if not target.exists():
+                target.symlink_to(executable)
+        env = {**self.env, "PATH": str(tools), "GUARD_GIT_LOG": str(log),
+               "GUARD_READS": str(counter), "GUARD_FAKE": str(fake),
+               "GUARD_TAMPER": tamper or ""}
+        result = self.cli(".github/scripts/bump.py", "patch",
+                          "--sha", self.sha, "--ref", self.ref, env=env)
+        calls = [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("guard", result.stderr)
+        self.assertFalse(any("push" in args for args in calls), calls)
+        self.assert_unchanged()
+        return counter
+
+    def test_initial_symlink_and_exit_zero_executable_guard_fail_without_writes_or_push(self):
+        before = {path: (self.local / path).read_bytes() for path in source.SOURCE_PATHS}
+        original = self.hook.read_bytes()
+        target = self.root / "original-executable-guard"
+        target.write_bytes(original)
+        target.chmod(0o755)
+        for kind in ("symlink", "replacement"):
+            with self.subTest(kind=kind):
+                if kind == "symlink":
+                    self.hook.unlink()
+                    self.hook.symlink_to(target)
+                else:
+                    self.hook.write_bytes(b"#!/bin/sh\nexit 0\n")
+                    self.hook.chmod(0o755)
+                counter = self.guarded_cli_with_git_log()
+                self.assertFalse(counter.exists(), "Initial rejection must precede remote reads")
+                self.assertEqual(self.git("rev-parse", "HEAD"), self.sha)
+                self.assertEqual(before, {path: (self.local / path).read_bytes() for path in before})
+                self.hook.unlink()
+                self.hook.write_bytes(original)
+                self.hook.chmod(0o755)
+
+    def test_executable_content_or_symlink_swap_after_final_real_remote_read_never_pushes(self):
+        for kind in ("replacement", "symlink"):
+            with self.subTest(kind=kind):
+                self.git("checkout", "--quiet", "--detach", self.sha)
+                counter = self.guarded_cli_with_git_log(kind)
+                self.assertEqual(counter.read_text(), "2")
+                child = self.git("rev-parse", "HEAD")
+                self.assertNotEqual(child, self.sha)
+                self.assertEqual(self.git("rev-list", "--parents", "-n", "1", child),
+                                 f"{child} {self.sha}")
+                self.git("reset", "--hard", self.sha)
+
+    def test_guard_requires_head_entry_to_be_a_committed_executable_blob(self):
+        self.git("update-index", "--chmod=-x", "--", ".github/hooks/pre-push")
+        self.git("commit", "--quiet", "-m", "nonexecutable committed guard fixture")
+        self.hook.chmod(0o755)
+        with cwd(self.local), patch.object(bump, "HOOK", self.hook):
+            with self.assertRaisesRegex(ValueError, "committed executable blob"):
+                bump.require_guard()
+        self.git("update-index", "--force-remove", "--", ".github/hooks/pre-push")
+        self.git("commit", "--quiet", "-m", "untracked executable guard fixture")
+        with cwd(self.local), patch.object(bump, "HOOK", self.hook):
+            with self.assertRaisesRegex(ValueError, "committed executable blob"):
+                bump.require_guard()
         self.assert_unchanged()
 
     def prepare_child(self):
