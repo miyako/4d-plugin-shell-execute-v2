@@ -36,7 +36,8 @@ if tool in ("python", "python3"):
         assert os.environ["GITHUB_REPOSITORY"] == "miyako/4d-plugin-shell-execute-v2"
         assert args[2:4] == ["--sha", os.environ["GITHUB_SHA"]]
         if args[1] == "publish":
-            assert args[4:] == ["Shell Execute-1.0.4.zip", "Shell Execute-1.0.4.dmg"]
+            assert args[4:] == [f"Shell Execute-{os.environ['VERSION']}.zip",
+                                f"Shell Execute-{os.environ['VERSION']}.dmg"]
         if os.environ.get("FAIL_PUBLICATION") or (
                 args[1] == "preflight" and os.environ.get("FAIL_PREFLIGHT")):
             sys.exit(9)
@@ -90,7 +91,8 @@ elif tool == "codesign":
         (contents / "_CodeSignature").mkdir(exist_ok=True)
         (contents / "_CodeSignature/CodeResources").write_bytes(b"fresh-signature")
 elif tool in ("ditto", "hdiutil"):
-    assert args[-1] == ("Shell Execute-1.0.4.zip" if tool == "ditto" else "Shell Execute-1.0.4.dmg")
+    suffix = "zip" if tool == "ditto" else "dmg"
+    assert args[-1] == f"Shell Execute-{os.environ['VERSION']}.{suffix}"
     pathlib.Path(args[-1]).write_bytes(b"offline-package")
 elif tool == "xcrun":
     if args[:2] == ["notarytool", "submit"]:
@@ -123,11 +125,12 @@ class NativeWorkflowTests(Fixture):
         # No developer/credential tools or shell profiles are inherited.
         for tool in ("bash", "grep", "head", "sed"):
             (self.bin / tool).symlink_to(shutil.which(tool))
+        version = source.read(ROOT)
         self.env = {
             "PATH": str(self.bin), "HOME": str(self.checkout), "LC_ALL": "C",
             "RUNNER_TEMP": str(self.checkout), "NATIVE_LOG": str(self.log),
-            "SOURCE_VERSION": "1.0.4", "PRODUCT_NAME": PRODUCT, "BASE_DIR": "test",
-            "MACOS_DEPLOYMENT_TARGET": "11.0", "VERSION": "1.0.4",
+            "SOURCE_VERSION": version, "PRODUCT_NAME": PRODUCT, "BASE_DIR": "test",
+            "MACOS_DEPLOYMENT_TARGET": "11.0", "VERSION": version,
             "KEYCHAIN_PATH": str(self.checkout / "offline.keychain"),
             "BUNDLE_PATH": str(native.BUNDLE), "GITHUB_ENV": str(self.checkout / "github-env"),
             "GITHUB_SHA": "a" * 40, "GH_TOKEN": "offline-only",
@@ -141,9 +144,7 @@ class NativeWorkflowTests(Fixture):
         shutil.copytree(ROOT / ".github/scripts", self.checkout / ".github/scripts",
                         ignore=shutil.ignore_patterns("__pycache__"))
         self.sources(self.checkout)
-        # Tests remain deterministic after a genuine version-bump proof.
-        if source.read(self.checkout) != "1.0.4":
-            self.fail("Native fixture requires the migration's canonical source version 1.0.4")
+        self.assertEqual(source.read(self.checkout), version)
         for relative in ("manifest.json", "constants.xlf"):
             (self.checkout / relative).write_bytes(original(relative))
         self.jobs = yaml.safe_load(WORKFLOW.read_text())["jobs"]
@@ -243,6 +244,18 @@ class NativeWorkflowTests(Fixture):
         self.assertTrue(all("--strict" in call and "--deep" in call for call in calls
                             if call[0] == "codesign" and "--verify" in call))
 
+    def test_pipeline_uses_selected_source_version_not_the_intake_literal(self):
+        before, version = self.env["VERSION"], "3.2.1"
+        for path in source.SOURCE_PATHS:
+            target = self.checkout / path
+            target.write_bytes(target.read_bytes().replace(before.encode(), version.encode()))
+        self.env.update(SOURCE_VERSION=version, VERSION=version)
+        self.assertEqual(source.read(self.checkout), version)
+        result = self.pipeline()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        for suffix in ("zip", "dmg"):
+            self.assertTrue((self.checkout / f"Shell Execute-{version}.{suffix}").is_file())
+
     def test_windows_powershell_cleanup_failure_is_fatal(self):
         path = self.checkout / native.WINDOWS
         path.unlink()
@@ -330,7 +343,7 @@ class NativeWorkflowTests(Fixture):
                 self.env = {**original_env, **case}
                 self.log.unlink(missing_ok=True)
                 for suffix in ("zip", "dmg"):
-                    (self.checkout / f"Shell Execute-1.0.4.{suffix}").unlink(missing_ok=True)
+                    (self.checkout / f"Shell Execute-{self.env['VERSION']}.{suffix}").unlink(missing_ok=True)
                 result = self.pipeline()
                 self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertFalse(any(call[0] == "python3" and "publish" in call
