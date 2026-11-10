@@ -26,7 +26,7 @@ The Shell Execute plugin drives OS-native file-association and process APIs from
 - **`Open with application` and `Print with application` currently return nothing to 4D on any path** (based on the plugin's own dispatch code — the result pointer is commented out in both handlers). Call them as statement-only commands, not inside an expression expecting a value.
 - **`Find best application` behaves differently by platform for what counts as valid input:** on Windows the full string you pass is handed directly to the OS association lookup; on macOS only the file extension is used (the plugin extracts it from your string internally). See the command section below.
 - **`Get process list` has a known reliability issue on macOS.** The current source calls a modern process-enumeration API but reads results using key names that belong to an older, unrelated API shape. This is very likely to throw at runtime on macOS rather than silently return incomplete data — see [Error handling](#error-handling--troubleshooting). Test this command specifically before relying on it in production on Mac.
-- **Failures are generally silent, not raised as 4D errors.** None of these four commands surfaces a 4D-visible error object — a failed lookup just comes back as empty text, an empty collection, or a no-op. Don't rely on `Last errors` after calling any of them.
+- **Failures are not raised as 4D errors.** The dispatcher reports caught native exceptions to stderr, but none of these four commands surfaces a 4D-visible error object — a failed lookup can still come back as empty text, an empty collection, or a no-op. Don't rely on `Last errors` after calling any of them.
 
 ---
 
@@ -235,3 +235,8 @@ End for each
 // Print with a specific application
 Print with application ("/Users/you/Documents/report.pdf"; "/Applications/Preview.app")
 ```
+
+## Native ownership
+
+See [the ownership inventory and contracts](docs/ownership.md) for the audited
+baseline, dormant helpers, isolated sanitizer regression and platform limits.
