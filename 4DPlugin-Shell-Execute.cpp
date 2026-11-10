@@ -9,6 +9,8 @@
  # --------------------------------------------------------------------------------*/
 
 #include "4DPlugin-Shell-Execute.h"
+#include <cstdio>
+#include <exception>
 
 #pragma mark -
 
@@ -36,9 +38,13 @@ void PluginMain(PA_long32 selector, PA_PluginParameters params) {
         }
 
 	}
+	catch(const std::exception& error)
+	{
+        std::fprintf(stderr, "Shell Execute: %s\n", error.what());
+	}
 	catch(...)
 	{
-
+        std::fprintf(stderr, "Shell Execute: unknown native error\n");
 	}
 }
 
@@ -152,6 +158,7 @@ void GET_PROCESS_LIST(PA_PluginParameters params) {
                                 PA_Variable v = PA_CreateVariable(eVK_Object);
                                 PA_SetObjectVariable(&v, obj);
                                 PA_SetCollectionElement(returnValue, PA_GetCollectionLength(returnValue), v);
+                                PA_ClearVariable(&v);
                             }
                             
                         }while(Module32Next(hModuleSnap, &me32));
@@ -195,6 +202,7 @@ void GET_PROCESS_LIST(PA_PluginParameters params) {
         PA_Variable v = PA_CreateVariable(eVK_Object);
         PA_SetObjectVariable(&v, obj);
         PA_SetCollectionElement(returnValue, PA_GetCollectionLength(returnValue), v);
+        PA_ClearVariable(&v);
     }
 #endif
     
@@ -271,4 +279,3 @@ void PRINT_WITH_APPLICATION(PA_PluginParameters params) {
 #endif
 
 }
-

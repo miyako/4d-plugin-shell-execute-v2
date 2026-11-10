@@ -1,0 +1,29 @@
+name: Native ownership
+
+on:
+  push:
+    branches:
+      - main
+      - miyako-shell-execute-ownership-audit
+    paths:
+      - '4D Plugin API/**'
+      - '4DPlugin-Shell-Execute.*'
+      - 'support/**'
+      - '.github/tests/**'
+      - '.github/workflows/ownership.yml'
+      - 'docs/ownership.md'
+
+permissions:
+  contents: read
+
+jobs:
+  ownership:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Immutable baseline failure signature
+        run: python3 .github/tests/test_ownership.py --baseline
+      - name: Fixed actual-source ownership and platform isolation
+        run: python3 .github/tests/test_ownership.py
